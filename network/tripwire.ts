@@ -3,7 +3,7 @@ import { panic } from "../debug/error.ts";
 export const store = await Deno.openKv();
 
 export let timeToWait = 60 * 1000;
-export let db = await Deno.openKv();
+export let db: Deno.Kv | undefined;
 
 export function configTripwire(
   cacheKv: Deno.Kv,
@@ -14,13 +14,16 @@ export function configTripwire(
 }
 
 function getKvPath(namespace: string) {
-  return ["_rate_limit:", namespace];
+  return ["__rate_limit__", namespace];
 }
 
 export async function checkTripwire(
   namespace: string,
   doesntRearmAfterTrip = false,
 ) {
+  if (!db) {
+    throw new Error("You must call configTripwire before using checkTripwire");
+  }
   const lastFail = await db.get(getKvPath(namespace));
   if (typeof lastFail.value === "string") {
     const lastFailTime = parseInt(lastFail.value);
@@ -39,6 +42,9 @@ export async function checkTripwire(
 }
 
 export async function recordFail(namespace: string) {
+  if (!db) {
+    throw new Error("You must call configTripwire before using checkTripwire");
+  }
   await db.set(getKvPath(namespace), Date.now().toString());
   panic(
     `Too many requests for "${namespace}". Wait before retrying is ${
