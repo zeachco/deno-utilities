@@ -34,10 +34,14 @@ export async function cacheProxy<T>(
 
   const actualResults = await fallback();
 
-  await db.set(getKvPath(namespace), {
-    time: Date.now(),
-    data: JSON.stringify(actualResults),
-  });
+  try {
+    await db.set(getKvPath(namespace), {
+      time: Date.now(),
+      data: JSON.stringify(actualResults),
+    });
+  } catch (error) {
+    console.error("Error setting cache", error)
+  }
 
   return actualResults;
 }
